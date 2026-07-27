@@ -1,0 +1,55 @@
+# Hardware Wiring & Pinout Guide - ESP32 TDOA Locator
+
+## Overview
+This project uses exactly two hardware I2S peripherals embedded in the ESP32 (I2S0 and I2S1) to read four INMP441 digital microphones simultaneously. There are no external multiplexer chips required. To achieve this, the microphones are paired off, and their physical `L/R` pins are hardwired to specific voltage states to define their stereo channel identities.
+
+---
+
+## 1. Power Distribution (All Microphones)
+Warning: Do not use the 5V (VIN) pin. The INMP441 requires 3.3V logic. A loose ground connection will introduce acoustic noise that ruins the Time-Difference-of-Arrival (TDOA) math.
+
+* VDD (All 4 Mics) -> ESP32 3.3V
+* GND (All 4 Mics) -> ESP32 GND
+
+---
+
+## 2. Array 1 (X-Axis: Left/Right Calculation) -> Routed to ESP32 I2S0
+This pair calculates the left-to-right sample delay. Both microphones share the same clock and data pins, but operate on opposite stereo channels.
+
+* MIC A (Left Channel):
+  - L/R Pin -> ESP32 GND
+  - SCK Pin -> ESP32 GPIO 14
+  - WS Pin  -> ESP32 GPIO 15
+  - SD Pin  -> ESP32 GPIO 32
+
+* MIC B (Right Channel):
+  - L/R Pin -> ESP32 3.3V
+  - SCK Pin -> ESP32 GPIO 14
+  - WS Pin  -> ESP32 GPIO 15
+  - SD Pin  -> ESP32 GPIO 32
+
+---
+
+## 3. Array 2 (Y-Axis: Front/Back Calculation) -> Routed to ESP32 I2S1
+This pair calculates the front-to-back sample delay to complete the 360-degree vector.
+
+* MIC C (Left Channel):
+  - L/R Pin -> ESP32 GND
+  - SCK Pin -> ESP32 GPIO 26
+  - WS Pin  -> ESP32 GPIO 25
+  - SD Pin  -> ESP32 GPIO 33
+
+* MIC D (Right Channel):
+  - L/R Pin -> ESP32 3.3V
+  - SCK Pin -> ESP32 GPIO 26
+  - WS Pin  -> ESP32 GPIO 25
+  - SD Pin  -> ESP32 GPIO 33
+
+---
+
+## 4. Mechanical Geometry (CRITICAL)
+The software mathematics (calculating arcsine based on the speed of sound) assume a rigid, perfect physical layout. 
+
+1. The four microphones must be mounted in a perfect square.
+2. The distance between Mic A and Mic B (and Mic C to Mic D) must be EXACTLY 8.0 centimeters (0.08 meters) to match the `MIC_DISTANCE` constant in `main.c`.
+3. If the array flexes, wiggles, or is mismeasured, the resulting angle calculations will be entirely inaccurate. Mount them to a rigid 3D printed plate, thick acrylic, or heavy cardboard.
